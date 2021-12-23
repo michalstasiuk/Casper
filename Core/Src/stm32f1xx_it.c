@@ -22,6 +22,8 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "time.h"
+#include "motor_control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,8 +57,10 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_adc1;
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
-extern TIM_HandleTypeDef htim4;
+extern DMA_HandleTypeDef hdma_usart3_tx;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 
@@ -179,17 +183,32 @@ void PendSV_Handler(void)
   /* USER CODE END PendSV_IRQn 1 */
 }
 
+extern int32_t count_left;
+extern int32_t count_right;
+
+int32_t old_count_left = 0;
+int32_t old_count_right = 0;
+
+int32_t speed_left = 0;
+int32_t speed_right = 0;
+
+uint16_t systick_counter = 0;
+
 /**
   * @brief This function handles System tick timer.
   */
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+	systick_counter++;
+	decrement_time_delay();
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+  if(systick_counter == 100){
+	  speed_left = count_left - old_count_left;
+	  speed_right = count_right - old_count_right;
+  }
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -199,6 +218,48 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f1xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles DMA1 channel1 global interrupt.
+  */
+void DMA1_Channel1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel1_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_adc1);
+  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
+void DMA1_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart3_tx);
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM1 update interrupt.
+  */
+void TIM1_UP_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_IRQn 0 */
+	motor_control_handler();
+  /* USER CODE END TIM1_UP_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_UP_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_IRQn 1 */
+}
 
 /**
   * @brief This function handles TIM2 global interrupt.
@@ -212,20 +273,6 @@ void TIM2_IRQHandler(void)
   /* USER CODE BEGIN TIM2_IRQn 1 */
 
   /* USER CODE END TIM2_IRQn 1 */
-}
-
-/**
-  * @brief This function handles TIM4 global interrupt.
-  */
-void TIM4_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM4_IRQn 0 */
-
-  /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
-  /* USER CODE BEGIN TIM4_IRQn 1 */
-
-  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**
