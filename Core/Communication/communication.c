@@ -8,7 +8,6 @@
 #include "communication.h"
 #include <memory.h>
 
-#define UART_MAX_RX_LEGHT 255
 #define FRAME_INIT_CHAR 's'
 #define FRAME_END_CHAR 'e'
 
@@ -34,7 +33,7 @@ bool is_new_frame_availible(void){
 	return is_new_data_availible;
 }
 
-uint8_t get_new_frame(char* frame){
+uint8_t get_new_frame(uint8_t* frame){
 	if (is_new_frame_availible()){
 		memcpy(frame, uart_interface.rx_data, uart_interface.current_frame_size);
 		return uart_interface.current_frame_size;

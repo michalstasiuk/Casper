@@ -26,7 +26,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "communication.h"
+#include "motor_control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,6 +104,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(is_new_frame_availible()){
+		  uint8_t buffer[UART_MAX_RX_LEGHT];
+		  uint8_t lenght = get_new_frame(buffer);
+		  switch (buffer[1]) {
+			case '!':{
+				deserialize_motor_control_frame(buffer, lenght);
+				break;
+			}
+			default:
+				break;
+		}
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

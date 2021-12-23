@@ -10,6 +10,11 @@
 
 #include "type_defs.h"
 
+typedef struct{
+	uint8_t counter;
+	bool is_counter_active;
+}watchdog_timer;
+
 void delay_ms(uint32_t time_ms);
 
 //use in system systick

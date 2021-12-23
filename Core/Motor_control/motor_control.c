@@ -6,8 +6,10 @@
  */
 #include "motor_control.h"
 #include "tim.h"
+#include "time.h"
 
 #define MAX_RPM 1000
+#define MAX_SPEED 3000
 #define PWM_FREQUENCY 1000
 #define PWM_INTERVAL 0.001
 
@@ -26,8 +28,104 @@ typedef struct{
 	int32_t integration_sum;
 }motor_status;
 
+watchdog_timer motors_watchdog_timer;
+
 motor_status motor_left;
 motor_status motor_right;
+
+void motor_left_forward(){
+	HAL_GPIO_WritePin(GPIOB, DIR1A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOB, DIR1B_Pin, GPIO_PIN_RESET);
+
+	motor_left.target_speed = 2000;
+	motor_right.target_speed = 2000;
+}
+
+void motor_right_forward(){
+	HAL_GPIO_WritePin(GPIOB, DIR2A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOB, DIR2B_Pin, GPIO_PIN_RESET);
+
+	motor_left.target_speed = 2000;
+	motor_right.target_speed = 2000;
+}
+
+void motor_left_backward(){
+	HAL_GPIO_WritePin(GPIOB, DIR1A_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, DIR1B_Pin, GPIO_PIN_SET);
+
+	motor_left.target_speed = -2000;
+	motor_right.target_speed = -2000;
+}
+
+void motor_right_backward(){
+	HAL_GPIO_WritePin(GPIOB, DIR2A_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, DIR2B_Pin, GPIO_PIN_SET);
+
+	motor_left.target_speed = -2000;
+	motor_right.target_speed = -2000;
+}
+
+void left_motor_stop(){
+	motor_left.target_speed = 0;
+}
+
+void right_motor_stop(){
+	motor_right.target_speed = 0;
+}
+
+void go_forward(){
+	motor_left_forward();
+	motor_right_forward();
+}
+
+void go_backward(){
+	motor_left_backward();
+	motor_right_backward();
+}
+
+void turn_left(){
+	motor_right_forward();
+	motor_left_backward();
+}
+
+void turn_right(){
+	motor_left_forward();
+	motor_right_backward();
+}
+
+void STOP(){
+	left_motor_stop();
+	right_motor_stop();
+}
+
+void set_watchdog_active(){
+	motors_watchdog_timer.counter = 0;
+	motors_watchdog_timer.is_counter_active = TRUE;
+}
+
+void wsad_motor_control(uint8_t byte) {
+	switch ((char)byte) {
+	case 'w':
+		set_watchdog_active();
+		go_forward();
+		break;
+	case 's':
+		set_watchdog_active();
+		go_backward();
+		break;
+	case 'a':
+		set_watchdog_active();
+		turn_left();
+		break;
+	case 'd':
+		set_watchdog_active();
+		turn_right();
+		break;
+	default:
+		STOP();
+		break;
+	}
+}
 
 void deserialize_motor_control_frame(uint8_t* frame, uint8_t size){
 	switch (frame[1]) {
@@ -37,14 +135,35 @@ void deserialize_motor_control_frame(uint8_t* frame, uint8_t size){
 			break;
 		}
 		case '?':{
-			motor_left.target_rotation_ps = (uint8_t)(MAX_RPM*((frame[2]-100)/100));
-			motor_right.target_rotation_ps = (uint8_t)(MAX_RPM*((frame[3]-100)/100));
+			set_watchdog_active();
+			motor_left.target_speed = (uint8_t)(MAX_SPEED*((frame[2]-100)/100));
+			motor_right.target_speed = (uint8_t)(MAX_SPEED*((frame[3]-100)/100));
+
+			if(motor_left.target_speed >=0){
+				HAL_GPIO_WritePin(GPIOB, DIR1A_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, DIR1B_Pin, GPIO_PIN_RESET);
+			} else {
+				HAL_GPIO_WritePin(GPIOB, DIR1A_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, DIR1B_Pin, GPIO_PIN_SET);
+			}
+			if (motor_right.target_speed >= 0) {
+				HAL_GPIO_WritePin(GPIOB, DIR2A_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, DIR2B_Pin, GPIO_PIN_RESET);
+			} else {
+				HAL_GPIO_WritePin(GPIOB, DIR2A_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, DIR2B_Pin, GPIO_PIN_SET);
+			}
+			break;
+		}
+		case '@':{
+			wsad_motor_control(frame[2]);
 			break;
 		}
 		default:
 			break;
 	}
 }
+
 
 uint32_t counter_left = 0;
 uint32_t counter_right = 0;

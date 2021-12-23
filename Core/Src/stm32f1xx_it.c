@@ -43,7 +43,20 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern uint32_t counter_left;
+extern uint32_t counter_right;
 
+extern int32_t count_left;
+extern int32_t count_right;
+int32_t old_count_left = 0;
+int32_t old_count_right = 0;
+
+uint32_t systick_counter;
+
+int32_t speed_left = 0;
+int32_t speed_right = 0;
+
+extern watchdog_timer motors_watchdog_timer;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -183,17 +196,6 @@ void PendSV_Handler(void)
   /* USER CODE END PendSV_IRQn 1 */
 }
 
-extern int32_t count_left;
-extern int32_t count_right;
-
-int32_t old_count_left = 0;
-int32_t old_count_right = 0;
-
-int32_t speed_left = 0;
-int32_t speed_right = 0;
-
-uint16_t systick_counter = 0;
-
 /**
   * @brief This function handles System tick timer.
   */
@@ -201,13 +203,20 @@ void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 	systick_counter++;
+	if(motors_watchdog_timer.is_counter_active){
+		motors_watchdog_timer.counter++;
+	}
 	decrement_time_delay();
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-  if(systick_counter == 100){
+  if(systick_counter >= 100){
 	  speed_left = count_left - old_count_left;
 	  speed_right = count_right - old_count_right;
+  }
+  if(motors_watchdog_timer.counter >= 500){
+	  motors_watchdog_timer.is_counter_active = FALSE;
+	  motors_watchdog_timer.counter = 0;
   }
   /* USER CODE END SysTick_IRQn 1 */
 }
